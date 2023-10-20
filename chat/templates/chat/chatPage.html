@@ -1,102 +1,165 @@
 <!DOCTYPE html>
 <html>
+
 <body>
-	<center><h1>Hello , Welcome to my chat site ! {{request.user}}</h1></center>
+	<center>
+		<h1>Hello , Welcome to my chat site ! {{request.user}}</h1>
+	</center>
 	<br>
 	{% if request.user.is_authenticated %}
-	<center> Logout the chat Page <a href = "{% url 'logout-user' %}">Logout</a></center>
+	<center> Logout the chat Page <a href="{% url 'logout-user' %}">Logout</a></center>
 	{% endif %}
-	<div
-	class="chat__item__container"
-	id="id_chat_item_container"
-	style="font-size: 20px"
-	>
-	<br />
-	<input type="text" id="id_message_send_input" />
-	<button type="submit" id="id_message_send_button">Send Message</button>
-	<br />
-	<br />
+
+	<form>
+		<input type="radio" name="radioOption" value="AES-ECB" checked >AES-ECB<br>
+		<input type="radio" name="radioOption" value="AES-CBC">AES-CBC<br>
+		<!-- <input type="button" value="Select" class="button"> -->
+	</form>
+
+	<div class="chat__item__container" id="id_chat_item_container" style="font-size: 20px">
+		<br />
+		<input type="text" id="id_message_send_input" />
+		<button type="submit" id="id_message_send_button">Send Message</button>
+		<br />
+		<br />
 	</div>
 	<script>
 
-	function getCookie(name) {
-            var value = "; " + document.cookie;
-            var parts = value.split("; " + name + "=");
-            if (parts.length === 2) return parts.pop().split(";").shift();
-    }
-
-
-
-	const chatSocket = new WebSocket("ws://" + window.location.host + "/");
-	chatSocket.onopen = function (e) {
-		console.log("The connection was set up successfully!");
-	};
-
-	chatSocket.onclose = function (e) {
-		console.log("Something unexpected happened!");
-	};
-
-	document.querySelector("#id_message_send_input").focus();
-
-	document.querySelector("#id_message_send_input").onkeyup = function (e) {
-		if (e.keyCode === 13) {
-			document.querySelector("#id_message_send_button").click();
+		function getCookie(name) {
+			var value = "; " + document.cookie;
+			var parts = value.split("; " + name + "=");
+			if (parts.length === 2) return parts.pop().split(";").shift();
 		}
-	};
-
-	document.querySelector("#id_message_send_button").onclick = function (e) {
-
-		var dataToSend = document.querySelector("#id_message_send_input").value;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/encrypt_ecb/', true);
-            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    chatSocket.send(JSON.stringify({
-                    	message: response.ct, key: response.key, username: "{{request.user.username}}"
-                    	})
-                    );
-                }
-            };
-            xhr.send('data=' + dataToSend);
 
 
 
-	};
+		const chatSocket = new WebSocket("ws://" + window.location.host + "/");
+		chatSocket.onopen = function (e) {
+			console.log("The connection was set up successfully!");
+		};
 
-	chatSocket.onmessage = function (e) {
-		const data = JSON.parse(e.data);
+		chatSocket.onclose = function (e) {
+			console.log("Something unexpected happened!");
+		};
 
-		var key = data.key;
-		var ciphertext = data.message;
+		document.querySelector("#id_message_send_input").focus();
 
-		var dataToSend= {"key":key,"ciphertext":ciphertext,"username":data.username};
+		document.querySelector("#id_message_send_input").onkeyup = function (e) {
+			if (e.keyCode === 13) {
+				document.querySelector("#id_message_send_button").click();
+			}
+		};
 
-			var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/decrypt_ecb/', true);
-            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
+		document.querySelector("#id_message_send_button").onclick = function (e) {
+
+			var radioValue = document.querySelector('input[name="radioOption"]:checked').value;
+			
+			if(radioValue === "AES-ECB"){
+	
+				var dataToSend = document.querySelector("#id_message_send_input").value;
+	
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', '/encrypt_ecb/', true);
+				xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState === 4 && xhr.status === 200) {
+						var response = JSON.parse(xhr.responseText);
+						chatSocket.send(JSON.stringify({
+							message: response.ct, key: response.key,iv:'', username: "{{request.user.username}}"
+						})
+						);
+					}
+				};
+				xhr.send('data=' + dataToSend);
+
+			}
+			
+			else{
+				var dataToSend = document.querySelector("#id_message_send_input").value;
+	
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', '/encrypt_cbc/', true);
+				xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState === 4 && xhr.status === 200) {
+						var response = JSON.parse(xhr.responseText);
+						chatSocket.send(JSON.stringify({
+							message: response.ct, key: response.key, iv: response.iv , username: "{{request.user.username}}"
+						})
+						);
+					}
+				};
+				xhr.send('data=' + dataToSend);
+			}
 
 
-					var div = document.createElement("div");
-					div.innerHTML = response.username + " : " + response.message + "<br> Cipher : "+response.ciphertext + "<br> Key : "+response.key + "<br>--------------" ;
-					document.querySelector("#id_message_send_input").value = "";
-					document.querySelector("#id_chat_item_container").appendChild(div);
 
-                }
-            };
-            var jsonData = JSON.stringify(dataToSend);
-			xhr.send(jsonData);
+		};
 
-	};
+		chatSocket.onmessage = function (e) {
+
+			
+			const data = JSON.parse(e.data);
+			var radioValue = document.querySelector('input[name="radioOption"]:checked').value;
+			
+			if(radioValue === "AES-ECB"){
+				var key = data.key;
+				var ciphertext = data.message;
+
+				var dataToSend = { "key": key, "ciphertext": ciphertext, iv:'', "username": data.username };
+
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', '/decrypt_ecb/', true);
+				xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState === 4 && xhr.status === 200) {
+						var response = JSON.parse(xhr.responseText);
+
+
+						var div = document.createElement("div");
+						div.innerHTML = response.username + " : " + response.message + "<br> Cipher : " + response.ciphertext + "<br> Key : " + response.key + "<br>--------------";
+						document.querySelector("#id_message_send_input").value = "";
+						document.querySelector("#id_chat_item_container").appendChild(div);
+
+					}
+				};
+				var jsonData = JSON.stringify(dataToSend);
+				xhr.send(jsonData);
+			}
+			
+			else{
+
+				var key = data.key;
+				var iv  = data.iv;
+				var ciphertext = data.message;
+
+				var dataToSend = { "key": key, "ciphertext": ciphertext, "iv": iv, "username": data.username };
+
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', '/decrypt_cbc/', true);
+				xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState === 4 && xhr.status === 200) {
+						var response = JSON.parse(xhr.responseText);
+
+						var div = document.createElement("div");
+						div.innerHTML = response.username + " : " + response.message + "<br> Cipher : " + response.ciphertext + "<br> iv : " + response.iv + "<br> Key : " + response.key + "<br>--------------";
+						document.querySelector("#id_message_send_input").value = "";
+						document.querySelector("#id_chat_item_container").appendChild(div);
+					}
+				};
+				var jsonData = JSON.stringify(dataToSend);
+				xhr.send(jsonData);
+			}
+
+		};
 
 
 	</script>
 </body>
+
 </html>
