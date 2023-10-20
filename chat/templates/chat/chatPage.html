@@ -18,32 +18,85 @@
 	<br />
 	</div>
 	<script>
+
+	function getCookie(name) {
+            var value = "; " + document.cookie;
+            var parts = value.split("; " + name + "=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+    }
+
+
+
 	const chatSocket = new WebSocket("ws://" + window.location.host + "/");
 	chatSocket.onopen = function (e) {
-		console.log("The connection was setup successfully !");
+		console.log("The connection was set up successfully!");
 	};
+
 	chatSocket.onclose = function (e) {
-		console.log("Something unexpected happened !");
+		console.log("Something unexpected happened!");
 	};
+
 	document.querySelector("#id_message_send_input").focus();
+
 	document.querySelector("#id_message_send_input").onkeyup = function (e) {
-		if (e.keyCode == 13) {
-		document.querySelector("#id_message_send_button").click();
+		if (e.keyCode === 13) {
+			document.querySelector("#id_message_send_button").click();
 		}
 	};
+
 	document.querySelector("#id_message_send_button").onclick = function (e) {
-		var messageInput = document.querySelector(
-		"#id_message_send_input"
-		).value;
-		chatSocket.send(JSON.stringify({ message: messageInput, username : "{{request.user.username}}"}));
+
+		var dataToSend = document.querySelector("#id_message_send_input").value;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/encrypt_ecb/', true);
+            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    chatSocket.send(JSON.stringify({
+                    	message: response.ct, key: response.key, username: "{{request.user.username}}"
+                    	})
+                    );
+                }
+            };
+            xhr.send('data=' + dataToSend);
+
+
+
 	};
+
 	chatSocket.onmessage = function (e) {
 		const data = JSON.parse(e.data);
-		var div = document.createElement("div");
-		div.innerHTML = data.username + " : " + data.message;
-		document.querySelector("#id_message_send_input").value = "";
-		document.querySelector("#id_chat_item_container").appendChild(div);
+
+		var key = data.key;
+		var ciphertext = data.message;
+
+		var dataToSend= {"key":key,"ciphertext":ciphertext,"username":data.username};
+
+			var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/decrypt_ecb/', true);
+            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+
+
+					var div = document.createElement("div");
+					div.innerHTML = response.username + " : " + response.message + "<br> Cipher : "+response.ciphertext + "<br> Key : "+response.key + "<br>--------------" ;
+					document.querySelector("#id_message_send_input").value = "";
+					document.querySelector("#id_chat_item_container").appendChild(div);
+
+                }
+            };
+            var jsonData = JSON.stringify(dataToSend);
+			xhr.send(jsonData);
+
 	};
+
+
 	</script>
 </body>
 </html>
