@@ -120,7 +120,7 @@
 
 
 						var div = document.createElement("div");
-						div.innerHTML = response.username + " : " + response.message + "<br> Cipher : " + response.ciphertext + "<br> Key : " + response.key + "<br>--------------";
+						div.innerHTML = response.username + " : " + response.message + "<br> Ciphered Text : " + response.ciphertext + "<br> Key : " + response.key + "<br>--------------";
 						document.querySelector("#id_message_send_input").value = "";
 						document.querySelector("#id_chat_item_container").appendChild(div);
 
@@ -147,7 +147,7 @@
 						var response = JSON.parse(xhr.responseText);
 
 						var div = document.createElement("div");
-						div.innerHTML = response.username + " : " + response.message + "<br> Cipher : " + response.ciphertext + "<br> iv : " + response.iv + "<br> Key : " + response.key + "<br>--------------";
+						div.innerHTML = response.username + " : " + response.message + "<br> Ciphered Text : " + response.ciphertext + "<br> iv : " + response.iv + "<br> Key : " + response.key + "<br>--------------";
 						document.querySelector("#id_message_send_input").value = "";
 						document.querySelector("#id_chat_item_container").appendChild(div);
 					}
